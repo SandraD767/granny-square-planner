@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Granny Square Blanket Planner</title>
+<style>
+  body { font-family: Arial, sans-serif; padding: 20px; }
+  .controls { margin-bottom: 20px; }
+  input { margin: 0 5px 10px 0; }
+  button { margin-top: 10px; padding: 5px 10px; }
+  #blanket { display: grid; gap: 2px; margin-top: 20px; }
+  .square { position: relative; border: 1px solid #ccc; }
+  .ring { position: absolute; border-radius: 50%; box-sizing: border-box; }
+  table { margin-top: 20px; border-collapse: collapse; }
+  th, td { border: 1px solid #ccc; padding: 5px 10px; text-align: center; }
+  #palette input { width: 60px; margin-right: 5px; }
+</style>
+</head>
+<body>
+
+<h1>Granny Square Blanket Planner</h1>
+
+<div class="controls">
+  <label>Width (squares): <input type="number" id="width" value="8"></label>
+  <label>Height (squares): <input type="number" id="height" value="10"></label>
+  <label>Square Size (px): <input type="number" id="squareSize" value="50"></label>
+  <label>Colors per Square: <input type="number" id="colorsPerSquare" value="3"></label>
+  <br>
+  <label>Total Colors: <input type="number" id="totalColors" value="5"></label>
+  <div id="palette"></div>
+  <button onclick="updatePalette()">Set Palette</button>
+  <br>
+  <button onclick="generateBlanket()">Generate Blanket</button>
+  <button onclick="downloadCSV()">Download Summary (CSV)</button>
+</div>
+
+<div id="blanket"></div>
+
+<table id="summary">
+  <thead>
+    <tr>
+      <th>Square Type (Concentric Colors)</th>
+      <th>Count</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+let userPalette = [];
+
+// Create color inputs based on total colors
+function updatePalette() {
+  const totalColors = parseInt(document.getElementById('totalColors').value);
+  const paletteDiv = document.getElementById('palette');
+  paletteDiv.innerHTML = '';
+  userPalette = [];
+  for (let i = 0; i < totalColors; i++) {
+    const input = document.createElement('input');
+    input.type = 'color';
+    input.value = '#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+    input.id = 'color'+i;
+    paletteDiv.appendChild(input);
+    userPalette.push(input.value);
+    input.addEventListener('input', () => { userPalette[i] = input.value; });
+  }
+}
+
+// Generate blanket
+function generateBlanket() {
+  const width = parseInt(document.getElementById('width').value);
+  const height = parseInt(document.getElementById('height').value);
+  const squareSize = parseInt(document.getElementById('squareSize').value);
+  const colorsPerSquare = parseInt(document.getElementById('colorsPerSquare').value);
+
+  const blanketDiv = document.getElementById('blanket');
+  blanketDiv.innerHTML = '';
+  blanketDiv.style.gridTemplateColumns = `repeat(${width}, ${squareSize}px)`;
+
+  const squareTypes = {};
+
+  for (let i = 0; i < width * height; i++) {
+    const square = document.createElement('div');
+    square.className = 'square';
+    square.style.width = squareSize + 'px';
+    square.style.height = squareSize + 'px';
+    square.style.position = 'relative';
+
+    // Pick random colors from user palette
+    const usedColors = [];
+    while (usedColors.length < colorsPerSquare) {
+      const color = userPalette[Math.floor(Math.random() * userPalette.length)];
+      if (!usedColors.includes(color)) usedColors.push(color);
+    }
+
+    // Save type string for summary
+    const typeKey = usedColors.join(' → ');
+    squareTypes[typeKey] = (squareTypes[typeKey] || 0) + 1;
+
+    // Draw concentric rings
+    usedColors.forEach((color, index) => {
+      const ring = document.createElement('div');
+      const offset = (index / colorsPerSquare) * squareSize;
+      ring.className = 'ring';
+      ring.style.top = offset + 'px';
+      ring.style.left = offset + 'px';
+      ring.style.width = squareSize - offset*2 + 'px';
+      ring.style.height = squareSize - offset*2 + 'px';
+      ring.style.backgroundColor = color;
+      square.appendChild(ring);
+    });
+
+    blanketDiv.appendChild(square);
+  }
+
+  // Populate summary table
+  const tbody = document.querySelector('#summary tbody');
+  tbody.innerHTML = '';
+  for (const [type, count] of Object.entries(squareTypes)) {
+    const row = document.createElement('tr');
+    const typeCell = document.createElement('td');
+    typeCell.textContent = type;
+    const countCell = document.createElement('td');
+    countCell.textContent = count;
+    row.appendChild(typeCell);
+    row.appendChild(countCell);
+    tbody.appendChild(row);
+  }
+
+  // Save squareTypes globally for CSV download
+  window.lastSquareTypes = squareTypes;
+}
+
+// Download summary as CSV
+function downloadCSV() {
+  if (!window.lastSquareTypes) { alert("Generate a blanket first!"); return; }
+  let csv = 'Square Type (Concentric Colors),Count\n';
+  for (const [type, count] of Object.entries(window.lastSquareTypes)) {
+    csv += `"${type}",${count}\n`;
+  }
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'granny_square_summary.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+</script>
+
+</body>
+</html>
