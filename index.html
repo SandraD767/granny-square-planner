@@ -7,88 +7,76 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body { font-family: Arial, sans-serif; padding: 20px; }
+body {
+  font-family: Arial, sans-serif;
+  padding: 20px;
+}
 .controls input, .controls select { margin: 4px; }
 button { margin: 6px 4px; }
-
-#blanket {
-  display: grid;
-  gap: 4px;
-  margin-top: 20px;
-}
-
-.square, .preview {
-  position: relative;
+canvas {
   border: 1px solid #333;
+  margin-top: 20px;
+  cursor: pointer;
 }
-
-.layer {
-  position: absolute;
-  box-sizing: border-box;
-}
-
 table {
-  margin-top: 30px;
+  margin-top: 20px;
   border-collapse: collapse;
 }
-
 th, td {
   border: 1px solid #aaa;
   padding: 6px 10px;
   text-align: center;
 }
-
 .preview {
   width: 40px;
   height: 40px;
+  position: relative;
   margin: auto;
-}
-
-#yarnEstimate {
-  margin-top: 20px;
+  border: 1px solid #333;
 }
 </style>
 </head>
+
 <body>
 
 <h1>Granny Square Blanket Planner</h1>
 
 <div class="controls">
-Width: <input type="number" id="w" value="8">
-Height: <input type="number" id="h" value="10"><br>
+  Width (squares):
+  <input type="number" id="w" value="8" min="1" max="50">
+  Height (squares):
+  <input type="number" id="h" value="10" min="1" max="50"><br>
 
-Square size (px): <input type="number" id="size" value="60"><br>
+  Total colors:
+  <input type="number" id="totalColors" value="5" min="2" max="20">
+  Rows per square:
+  <input type="number" id="rows" value="3" min="1" max="10"><br>
 
-Total colors: <input type="number" id="totalColors" value="5">
-Colors per square: <input type="number" id="layers" value="3"><br>
+  Pattern variety:
+  <select id="variety">
+    <option value="low">Low</option>
+    <option value="medium" selected>Medium</option>
+    <option value="high">High</option>
+  </select><br>
 
-Pattern variety:
-<select id="variety">
-  <option value="low">Low</option>
-  <option value="medium" selected>Medium</option>
-  <option value="high">High</option>
-</select><br>
+  Border color:
+  <input type="color" id="borderColor" value="#000000">
+  Border thickness (rows):
+  <input type="number" id="borderRows" value="1" min="0" max="6"><br>
 
-Seed (optional):
-<input type="text" id="seed" placeholder="leave blank for random"><br>
-
-<button onclick="buildPalette()">Set Palette</button>
-<button onclick="generate()">Generate Blanket</button>
-<button onclick="exportPDF()">Download PDF</button>
-<button onclick="estimateYarn()">Estimate Yarn</button>
+  <button onclick="setPalette()">Set Palette</button>
+  <button onclick="generate()">Generate Blanket</button>
+  <button onclick="estimateYarn()">Estimate Yarn</button>
+  <button onclick="exportPDF()">Download PDF</button>
 </div>
 
 <div id="palette"></div>
-<div id="blanket"></div>
+<canvas id="blanketCanvas"></canvas>
 
 <h2>Square Summary</h2>
 <table>
 <thead>
-<tr>
-<th>Preview</th>
-<th>Pattern</th>
-<th>Count</th>
-</tr>
+<tr><th>Preview</th><th>Pattern</th><th>Count</th></tr>
 </thead>
 <tbody id="summary"></tbody>
 </table>
@@ -96,210 +84,162 @@ Seed (optional):
 <div id="yarnEstimate"></div>
 
 <script>
-let palette = [];
-let colorNames = [];
-let lastTypes = [];
-let lastCounts = [];
-let lastSettings = {};
-let lastGrid = [];
+let palette=[], colorNames=[], lastTypes=[], lastCounts=[], lastGrid=[], lockedGrid=[];
 
-function seededRandom(seed) {
-  let h = 2166136261 >>> 0;
-  for (let i = 0; i < seed.length; i++) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return function() {
-    h += h << 13; h ^= h >>> 7;
-    h += h << 3;  h ^= h >>> 17;
-    h += h << 5;
-    return (h >>> 0) / 4294967296;
-  };
-}
-
-function buildPalette() {
-  const n = +document.getElementById("totalColors").value;
-  palette = [];
-  colorNames = [];
-  const div = document.getElementById("palette");
-  div.innerHTML = "<h3>Palette</h3>";
-
-  for (let i = 0; i < n; i++) {
-    const input = document.createElement("input");
-    input.type = "color";
-    input.value = "#" + Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+function setPalette(){
+  const n=+document.getElementById("totalColors").value;
+  palette=[]; colorNames=[];
+  const div=document.getElementById("palette");
+  div.innerHTML="<h3>Palette</h3>";
+  for(let i=0;i<n;i++){
+    const input=document.createElement("input");
+    input.type="color";
+    input.value="#"+Math.floor(Math.random()*16777215).toString(16).padStart(6,"0");
     palette.push(input.value);
     colorNames.push(`Color ${i+1}`);
+    input.oninput=()=>palette[i]=input.value;
     div.appendChild(input);
-    input.oninput = () => palette[i] = input.value;
   }
 }
 
-function generate() {
-  const w = +document.getElementById("w").value;
-  const h = +document.getElementById("h").value;
-  const size = +document.getElementById("size").value;
-  const layers = +document.getElementById("layers").value;
-  const variety = document.getElementById("variety").value;
-  const seedInput = document.getElementById("seed").value;
+function generate(){
+  const w=+document.getElementById("w").value;
+  const h=+document.getElementById("h").value;
+  const rows=+document.getElementById("rows").value;
+  const variety=document.getElementById("variety").value;
 
-  const rand = seedInput ? seededRandom(seedInput) : Math.random;
-  const totalSquares = w * h;
+  const totalSquares=w*h;
+  const divisors={low:10,medium:8,high:6};
+  const maxTypes=Math.max(5,Math.floor(totalSquares/divisors[variety]));
 
-  const divisors = { low: 10, medium: 8, high: 6 };
-  const maxTypes = Math.max(5, Math.floor(totalSquares / divisors[variety]));
-
-  const types = [];
-  for (let i = 0; i < maxTypes; i++) {
-    const indices = [];
-    while (indices.length < layers) {
-      const r = Math.floor(rand() * palette.length);
-      if (!indices.includes(r)) indices.push(r);
+  const types=[];
+  for(let i=0;i<maxTypes;i++){
+    const pat=[];
+    while(pat.length<rows){
+      const r=Math.floor(Math.random()*palette.length);
+      if(!pat.includes(r)) pat.push(r);
     }
-    types.push(indices);
+    types.push(pat);
   }
 
-  const grid = [];
-  const counts = Array(types.length).fill(0);
+  if(!lockedGrid.length||lockedGrid.length!==h){
+    lockedGrid=Array.from({length:h},()=>Array(w).fill(false));
+  }
 
-  for (let y = 0; y < h; y++) {
-    grid[y] = [];
-    for (let x = 0; x < w; x++) {
-      let options = [...types.keys()];
-      if (x > 0) options = options.filter(i => i !== grid[y][x-1]);
-      if (y > 0) options = options.filter(i => i !== grid[y-1][x]);
-      const choice = options.length
-        ? options[Math.floor(rand()*options.length)]
-        : Math.floor(rand()*types.length);
-      grid[y][x] = choice;
-      counts[choice]++;
+  const grid=[];
+  const counts=Array(types.length).fill(0);
+
+  for(let y=0;y<h;y++){
+    grid[y]=[];
+    for(let x=0;x<w;x++){
+      if(lockedGrid[y][x]&&lastGrid[y]?.[x]!==undefined){
+        grid[y][x]=lastGrid[y][x];
+      } else {
+        let options=[...types.keys()];
+        if(x>0) options=options.filter(i=>i!==grid[y][x-1]);
+        if(y>0) options=options.filter(i=>i!==grid[y-1][x]);
+        grid[y][x]=options.length?options[Math.floor(Math.random()*options.length)]:Math.floor(Math.random()*types.length);
+      }
+      counts[grid[y][x]]++;
     }
   }
 
-  lastTypes = types;
-  lastCounts = counts;
-  lastSettings = { w, h, size, layers, variety };
-  lastGrid = grid;
-
-  renderBlanket(grid, types, size, layers);
-  renderSummary(types, counts, layers);
-  document.getElementById("yarnEstimate").innerHTML = "";
+  lastTypes=types;
+  lastCounts=counts;
+  lastGrid=grid;
+  drawCanvas(grid,types,rows);
+  renderSummary(types,counts,rows);
 }
 
-function renderBlanket(grid, types, size, layers) {
-  const blanket = document.getElementById("blanket");
-  blanket.innerHTML = "";
-  blanket.style.gridTemplateColumns = `repeat(${grid[0].length}, ${size}px)`;
+function drawCanvas(grid,types,rows){
+  const canvas=document.getElementById("blanketCanvas");
+  const size=Math.min(50,600/grid[0].length);
+  canvas.width=size*grid[0].length;
+  canvas.height=size*grid.length;
+  const ctx=canvas.getContext("2d");
 
-  grid.flat().forEach(typeIndex => {
-    const sq = document.createElement("div");
-    sq.className = "square";
-    sq.style.width = sq.style.height = size + "px";
+  for(let y=0;y<grid.length;y++){
+    for(let x=0;x<grid[0].length;x++){
+      const type=types[grid[y][x]];
+      for(let r=0;r<rows;r++){
+        const inset=(r/rows)*size/2;
+        ctx.fillStyle=palette[type[r]];
+        ctx.fillRect(x*size+inset,y*size+inset,size-inset*2,size-inset*2);
+      }
+      ctx.strokeStyle=lockedGrid[y][x]?"#000":"#444";
+      ctx.lineWidth=lockedGrid[y][x]?3:1;
+      ctx.strokeRect(x*size,y*size,size,size);
+    }
+  }
 
-    types[typeIndex].forEach((colorIdx, i) => {
-      const layer = document.createElement("div");
-      const inset = (i / layers) * size / 2;
-      layer.className = "layer";
-      layer.style.background = palette[colorIdx];
-      layer.style.top = layer.style.left = inset + "px";
-      layer.style.width = layer.style.height = (size - inset*2) + "px";
-      sq.appendChild(layer);
-    });
-
-    blanket.appendChild(sq);
-  });
+  canvas.onclick=e=>{
+    const rect=canvas.getBoundingClientRect();
+    const x=Math.floor((e.clientX-rect.left)/size);
+    const y=Math.floor((e.clientY-rect.top)/size);
+    if(grid[y]?.[x]!==undefined){
+      lockedGrid[y][x]=!lockedGrid[y][x];
+      drawCanvas(grid,types,rows);
+    }
+  }
 }
 
-function renderSummary(types, counts, layers) {
-  const tbody = document.getElementById("summary");
-  tbody.innerHTML = "";
-
-  types.forEach((type, i) => {
-    if (!counts[i]) return;
-    const row = document.createElement("tr");
-
-    const preview = document.createElement("td");
-    const p = document.createElement("div");
-    p.className = "preview";
-
-    type.forEach((c, j) => {
-      const l = document.createElement("div");
-      const inset = (j / layers) * 40 / 2;
-      l.style.position = "absolute";
-      l.style.background = palette[c];
-      l.style.top = l.style.left = inset + "px";
-      l.style.width = l.style.height = (40 - inset*2) + "px";
+function renderSummary(types,counts,rows){
+  const tbody=document.getElementById("summary");
+  tbody.innerHTML="";
+  types.forEach((type,i)=>{
+    if(!counts[i]) return;
+    const row=document.createElement("tr");
+    const prev=document.createElement("td");
+    const p=document.createElement("div");
+    p.className="preview";
+    type.forEach((c,j)=>{
+      const l=document.createElement("div");
+      const inset=(j/rows)*40/2;
+      l.style.position="absolute";
+      l.style.background=palette[c];
+      l.style.left=l.style.top=inset+"px";
+      l.style.width=l.style.height=40-inset*2+"px";
       p.appendChild(l);
     });
-
-    preview.appendChild(p);
-
-    const name = document.createElement("td");
-    name.textContent = type.map(c => colorNames[c]).join(" → ");
-
-    const count = document.createElement("td");
-    count.textContent = counts[i];
-
-    row.append(preview, name, count);
+    prev.appendChild(p);
+    const name=document.createElement("td");
+    name.textContent=type.map(c=>colorNames[c]).join(" → ");
+    const count=document.createElement("td");
+    count.textContent=counts[i];
+    row.append(prev,name,count);
     tbody.appendChild(row);
   });
 }
 
-function exportPDF() {
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF();
-  let y = 10;
-
-  pdf.text("Granny Square Blanket Plan", 10, y);
-  y += 10;
-
-  Object.entries(lastSettings).forEach(([k, v]) => {
-    pdf.text(`${k}: ${v}`, 10, y);
-    y += 8;
+function estimateYarn(){
+  const gramsPerLayer=2;
+  const totals=Array(palette.length).fill(0);
+  lastTypes.forEach((type,i)=>{
+    type.forEach(c=>totals[c]+=lastCounts[i]*gramsPerLayer);
   });
-
-  y += 5;
-  lastTypes.forEach((type, i) => {
-    if (!lastCounts[i]) return;
-    pdf.text(
-      `${type.map(c => colorNames[c]).join(" → ")} : ${lastCounts[i]} squares`,
-      10,
-      y
-    );
-    y += 7;
-    if (y > 280) { pdf.addPage(); y = 10; }
+  let html="<h2>Estimated Yarn Usage</h2><table><tr><th>Color</th><th>Grams</th></tr>";
+  let total=0;
+  totals.forEach((g,i)=>{
+    html+=`<tr><td>${colorNames[i]}</td><td>${g}</td></tr>`;
+    total+=g;
   });
-
-  pdf.save("granny-square-plan.pdf");
+  html+=`<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td></tr></table>`;
+  document.getElementById("yarnEstimate").innerHTML=html;
 }
 
-function estimateYarn() {
-  if (!lastTypes.length || !lastCounts.length) {
-    alert("Generate a blanket first!");
-    return;
-  }
-
-  const approxAreaCm2 = 10; // rough cm² per layer per square, adjust to your yarn/square size
-  const factor = 0.2; // grams per cm², rough estimate
-
-  const yarnTotals = Array(palette.length).fill(0);
-
-  lastTypes.forEach((type, i) => {
-    type.forEach(colorIdx => {
-      yarnTotals[colorIdx] += lastCounts[i] * approxAreaCm2;
-    });
+function exportPDF(){
+  const {jsPDF}=window.jspdf;
+  const pdf=new jsPDF();
+  let y=10;
+  pdf.text("Granny Square Blanket Plan",10,y);
+  y+=10;
+  lastTypes.forEach((type,i)=>{
+    if(!lastCounts[i]) return;
+    pdf.text(`${type.map(c=>colorNames[c]).join(" → ")} : ${lastCounts[i]} squares`,10,y);
+    y+=7;
+    if(y>280){pdf.addPage();y=10;}
   });
-
-  const container = document.getElementById("yarnEstimate");
-  let html = "<h2>Estimated Yarn Usage</h2><table><tr><th>Color</th><th>Approx grams</th></tr>";
-  let total = 0;
-  yarnTotals.forEach((grams, idx) => {
-    const est = Math.round(grams * factor);
-    html += `<tr><td>${colorNames[idx]}</td><td>${est}</td></tr>`;
-    total += est;
-  });
-  html += `<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td></tr></table>`;
-  container.innerHTML = html;
+  pdf.save("granny-square-plan.pdf");
 }
 </script>
 
