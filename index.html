@@ -4,101 +4,91 @@
 <meta charset="UTF-8">
 <title>Granny Square Blanket Planner</title>
 
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body {
-  font-family: Arial, sans-serif;
-  padding: 20px;
-}
-.controls input, .controls select { margin: 4px; }
-button { margin: 6px 4px; }
-canvas {
-  border: 1px solid #333;
-  margin-top: 20px;
-  cursor: pointer;
-}
-table {
-  margin-top: 20px;
-  border-collapse: collapse;
-}
-th, td {
-  border: 1px solid #aaa;
-  padding: 6px 10px;
-  text-align: center;
-}
-.preview {
-  width: 40px;
-  height: 40px;
-  position: relative;
-  margin: auto;
-  border: 1px solid #333;
-}
+body { font-family: 'Montserrat', sans-serif; padding: 20px; max-width: 1100px; margin: auto; background-color: #f5f5f5; color: #333; }
+section { border: 1px solid #ccc; padding: 12px; margin-bottom: 12px; border-radius: 6px; background: #fff; }
+h2 { margin-top: 0; font-weight: 600; }
+button { margin: 6px 4px; padding: 6px 12px; background-color: #2aa198; color: #fff; border-radius: 6px; border: none; cursor: pointer; transition: transform 0.1s; }
+button:hover { transform: scale(1.05); }
+canvas { border: 1px solid #ccc; margin-top: 20px; width: 100%; max-width: 900px; background: #fff; }
+.preview { width: 36px; height: 36px; position: relative; border: 1px solid #333; margin: auto; }
+table { border-collapse: collapse; margin-top: 12px; }
+th, td { border: 1px solid #aaa; padding: 6px 10px; text-align: center; }
 </style>
 </head>
 
 <body>
+<h1>🧶 Granny Square Blanket Planner</h1>
 
-<h1>Granny Square Blanket Planner</h1>
+<section>
+<h2>Blanket Size</h2>
+Width <input type="number" id="w" value="8" min="1" max="50">
+Height <input type="number" id="h" value="10" min="1" max="50"><br>
+Rows per square <input type="range" id="rows" min="1" max="10" value="4" oninput="rowsVal.textContent=this.value">
+<span id="rowsVal">4</span>
+</section>
 
-<div class="controls">
-  Width (squares):
-  <input type="number" id="w" value="8" min="1" max="50">
-  Height (squares):
-  <input type="number" id="h" value="10" min="1" max="50"><br>
-
-  Total colors:
-  <input type="number" id="totalColors" value="5" min="2" max="20">
-  Rows per square:
-  <input type="number" id="rows" value="3" min="1" max="10"><br>
-
-  Pattern variety:
-  <select id="variety">
-    <option value="low">Low</option>
-    <option value="medium" selected>Medium</option>
-    <option value="high">High</option>
-  </select><br>
-
-  Border color:
-  <input type="color" id="borderColor" value="#000000">
-  Border thickness (rows):
-  <input type="number" id="borderRows" value="1" min="0" max="6"><br>
-
-  <button onclick="setPalette()">Set Palette</button>
-  <button onclick="generate()">Generate Blanket</button>
-  <button onclick="estimateYarn()">Estimate Yarn</button>
-  <button onclick="exportPDF()">Download PDF</button>
-</div>
-
+<section>
+<h2>Colors</h2>
+Number of colors <input type="number" id="totalColors" value="5" min="2" max="20">
+<button onclick="setPalette()">Set Palette</button>
 <div id="palette"></div>
+</section>
+
+<section>
+<h2>Pattern</h2>
+Pattern variety
+<select id="variety">
+<option value="low">Low</option>
+<option value="medium" selected>Medium</option>
+<option value="high">High</option>
+</select>
+<button onclick="generate()">Generate Blanket</button>
+</section>
+
+<section>
+<h2>Border</h2>
+<label><input type="checkbox" id="borderOn" checked> Enable border</label><br>
+Border rows <input type="range" id="borderRows" min="1" max="8" value="2" oninput="borderVal.textContent=this.value">
+<span id="borderVal">2</span><br>
+Border color <input type="color" id="borderColor" value="#000000">
+</section>
+
+<section>
+<h2>Output</h2>
+<button onclick="estimateYarn()">Estimate Yarn</button>
+<button onclick="exportPDF()">Download PDF</button>
+</section>
+
 <canvas id="blanketCanvas"></canvas>
 
 <h2>Square Summary</h2>
 <table>
-<thead>
-<tr><th>Preview</th><th>Pattern</th><th>Count</th></tr>
-</thead>
+<thead><tr><th>Preview</th><th>Pattern</th><th>Count</th></tr></thead>
 <tbody id="summary"></tbody>
 </table>
 
 <div id="yarnEstimate"></div>
 
 <script>
-let palette=[], colorNames=[], lastTypes=[], lastCounts=[], lastGrid=[], lockedGrid=[];
+let palette=[], colorNames=[], lastTypes=[], lastCounts=[], lastGrid=[];
 
 function setPalette(){
   const n=+document.getElementById("totalColors").value;
   palette=[]; colorNames=[];
   const div=document.getElementById("palette");
-  div.innerHTML="<h3>Palette</h3>";
+  div.innerHTML="";
   for(let i=0;i<n;i++){
-    const input=document.createElement("input");
-    input.type="color";
-    input.value="#"+Math.floor(Math.random()*16777215).toString(16).padStart(6,"0");
-    palette.push(input.value);
-    colorNames.push(`Color ${i+1}`);
-    input.oninput=()=>palette[i]=input.value;
-    div.appendChild(input);
+    const c=document.createElement("input");
+    c.type="color";
+    c.value="#"+Math.floor(Math.random()*16777215).toString(16).padStart(6,"0");
+    palette.push(c.value);
+    colorNames.push("Color "+(i+1));
+    c.oninput=()=>palette[i]=c.value;
+    div.appendChild(c);
   }
 }
 
@@ -106,139 +96,105 @@ function generate(){
   const w=+document.getElementById("w").value;
   const h=+document.getElementById("h").value;
   const rows=+document.getElementById("rows").value;
-  const variety=document.getElementById("variety").value;
-
-  const totalSquares=w*h;
-  const divisors={low:10,medium:8,high:6};
-  const maxTypes=Math.max(5,Math.floor(totalSquares/divisors[variety]));
+  const divisor={low:10,medium:8,high:6}[document.getElementById("variety").value];
+  const maxTypes=Math.max(5,Math.floor(w*h/divisor));
 
   const types=[];
   for(let i=0;i<maxTypes;i++){
-    const pat=[];
-    while(pat.length<rows){
+    const p=[];
+    while(p.length<rows){
       const r=Math.floor(Math.random()*palette.length);
-      if(!pat.includes(r)) pat.push(r);
+      if(!p.includes(r)) p.push(r);
     }
-    types.push(pat);
-  }
-
-  if(!lockedGrid.length||lockedGrid.length!==h){
-    lockedGrid=Array.from({length:h},()=>Array(w).fill(false));
+    types.push(p);
   }
 
   const grid=[];
   const counts=Array(types.length).fill(0);
-
   for(let y=0;y<h;y++){
     grid[y]=[];
     for(let x=0;x<w;x++){
-      if(lockedGrid[y][x]&&lastGrid[y]?.[x]!==undefined){
-        grid[y][x]=lastGrid[y][x];
-      } else {
-        let options=[...types.keys()];
-        if(x>0) options=options.filter(i=>i!==grid[y][x-1]);
-        if(y>0) options=options.filter(i=>i!==grid[y-1][x]);
-        grid[y][x]=options.length?options[Math.floor(Math.random()*options.length)]:Math.floor(Math.random()*types.length);
-      }
+      let opts=[...types.keys()];
+      if(x>0) opts=opts.filter(i=>i!==grid[y][x-1]);
+      if(y>0) opts=opts.filter(i=>i!==grid[y-1][x]);
+      grid[y][x]=opts.length?opts[Math.floor(Math.random()*opts.length)]:0;
       counts[grid[y][x]]++;
     }
   }
 
-  lastTypes=types;
-  lastCounts=counts;
-  lastGrid=grid;
-  drawCanvas(grid,types,rows);
-  renderSummary(types,counts,rows);
+  lastTypes=types; lastCounts=counts; lastGrid=grid;
+  drawCanvas(); renderSummary();
 }
 
-function drawCanvas(grid,types,rows){
+function drawCanvas(){
   const canvas=document.getElementById("blanketCanvas");
-  const size=Math.min(50,600/grid[0].length);
-  canvas.width=size*grid[0].length;
-  canvas.height=size*grid.length;
   const ctx=canvas.getContext("2d");
+  const rows=+document.getElementById("rows").value;
+  const w=lastGrid[0].length, h=lastGrid.length;
+  const size=Math.min(50,800/w);
+  const borderOn=document.getElementById("borderOn").checked;
+  const borderRows=+document.getElementById("borderRows").value;
+  const borderSize=borderOn?borderRows*(size/rows):0;
 
-  for(let y=0;y<grid.length;y++){
-    for(let x=0;x<grid[0].length;x++){
-      const type=types[grid[y][x]];
+  canvas.width=w*size+borderSize*2;
+  canvas.height=h*size+borderSize*2;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  if(borderOn){
+    ctx.fillStyle=document.getElementById("borderColor").value;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
+
+  for(let y=0;y<h;y++){
+    for(let x=0;x<w;x++){
+      const t=lastTypes[lastGrid[y][x]];
       for(let r=0;r<rows;r++){
         const inset=(r/rows)*size/2;
-        ctx.fillStyle=palette[type[r]];
-        ctx.fillRect(x*size+inset,y*size+inset,size-inset*2,size-inset*2);
+        ctx.fillStyle=palette[t[r]];
+        ctx.fillRect(borderSize+x*size+inset,borderSize+y*size+inset,size-inset*2,size-inset*2);
       }
-      ctx.strokeStyle=lockedGrid[y][x]?"#000":"#444";
-      ctx.lineWidth=lockedGrid[y][x]?3:1;
-      ctx.strokeRect(x*size,y*size,size,size);
-    }
-  }
-
-  canvas.onclick=e=>{
-    const rect=canvas.getBoundingClientRect();
-    const x=Math.floor((e.clientX-rect.left)/size);
-    const y=Math.floor((e.clientY-rect.top)/size);
-    if(grid[y]?.[x]!==undefined){
-      lockedGrid[y][x]=!lockedGrid[y][x];
-      drawCanvas(grid,types,rows);
     }
   }
 }
 
-function renderSummary(types,counts,rows){
-  const tbody=document.getElementById("summary");
-  tbody.innerHTML="";
-  types.forEach((type,i)=>{
-    if(!counts[i]) return;
-    const row=document.createElement("tr");
-    const prev=document.createElement("td");
+function renderSummary(){
+  const body=document.getElementById("summary");
+  body.innerHTML="";
+  lastTypes.forEach((t,i)=>{
+    if(!lastCounts[i]) return;
+    const tr=document.createElement("tr");
     const p=document.createElement("div");
     p.className="preview";
-    type.forEach((c,j)=>{
-      const l=document.createElement("div");
-      const inset=(j/rows)*40/2;
-      l.style.position="absolute";
-      l.style.background=palette[c];
-      l.style.left=l.style.top=inset+"px";
-      l.style.width=l.style.height=40-inset*2+"px";
-      p.appendChild(l);
+    t.forEach((c,j)=>{
+      const d=document.createElement("div");
+      const inset=(j/t.length)*36/2;
+      d.style.position="absolute";
+      d.style.left=d.style.top=inset+"px";
+      d.style.width=d.style.height=36-inset*2+"px";
+      d.style.background=palette[c];
+      p.appendChild(d);
     });
-    prev.appendChild(p);
-    const name=document.createElement("td");
-    name.textContent=type.map(c=>colorNames[c]).join(" → ");
-    const count=document.createElement("td");
-    count.textContent=counts[i];
-    row.append(prev,name,count);
-    tbody.appendChild(row);
+    tr.innerHTML=`<td></td><td>${t.map(c=>colorNames[c]).join(" → ")}</td><td>${lastCounts[i]}</td>`;
+    tr.children[0].appendChild(p);
+    body.appendChild(tr);
   });
 }
 
 function estimateYarn(){
-  const gramsPerLayer=2;
-  const totals=Array(palette.length).fill(0);
-  lastTypes.forEach((type,i)=>{
-    type.forEach(c=>totals[c]+=lastCounts[i]*gramsPerLayer);
-  });
-  let html="<h2>Estimated Yarn Usage</h2><table><tr><th>Color</th><th>Grams</th></tr>";
   let total=0;
-  totals.forEach((g,i)=>{
-    html+=`<tr><td>${colorNames[i]}</td><td>${g}</td></tr>`;
-    total+=g;
-  });
-  html+=`<tr><td><strong>Total</strong></td><td><strong>${total}</strong></td></tr></table>`;
-  document.getElementById("yarnEstimate").innerHTML=html;
+  lastCounts.forEach(c=>total+=c*document.getElementById("rows").value*2);
+  document.getElementById("yarnEstimate").innerHTML="<h3>Estimated yarn: "+total+" g (rough)</h3>";
 }
 
 function exportPDF(){
   const {jsPDF}=window.jspdf;
-  const pdf=new jsPDF();
-  let y=10;
-  pdf.text("Granny Square Blanket Plan",10,y);
-  y+=10;
-  lastTypes.forEach((type,i)=>{
-    if(!lastCounts[i]) return;
-    pdf.text(`${type.map(c=>colorNames[c]).join(" → ")} : ${lastCounts[i]} squares`,10,y);
-    y+=7;
-    if(y>280){pdf.addPage();y=10;}
-  });
+  const pdf=new jsPDF("p","mm","a4");
+  pdf.text("Granny Square Blanket Plan",10,10);
+  const img=document.getElementById("blanketCanvas").toDataURL("image/png");
+  pdf.addImage(img,"PNG",10,16,190,90);
+  pdf.addPage();
+  pdf.text("Color Key",10,10);
+  colorNames.forEach((n,i)=>pdf.text(n,10,18+i*6));
   pdf.save("granny-square-plan.pdf");
 }
 </script>
