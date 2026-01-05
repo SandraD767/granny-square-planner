@@ -8,16 +8,102 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <style>
-body { font-family: 'Montserrat', sans-serif; padding: 20px; max-width: 1100px; margin: auto; background-color: #f5f5f5; color: #333; }
-section { border: 1px solid #ccc; padding: 12px; margin-bottom: 12px; border-radius: 6px; background: #fff; }
-h2 { margin-top: 0; font-weight: 600; }
-button { margin: 6px 4px; padding: 6px 12px; background-color: #2aa198; color: #fff; border-radius: 6px; border: none; cursor: pointer; transition: transform 0.1s; }
-button:hover { transform: scale(1.05); }
-#generateBtn { padding: 12px 24px; font-size: 1.2em; display: block; margin: 20px auto; background-color: #e76f51; }
-canvas { border: 1px solid #ccc; margin-top: 20px; width: 100%; max-width: 900px; background: #fff; }
-.preview { width: 36px; height: 36px; position: relative; border: 1px solid #333; margin: auto; }
-table { border-collapse: collapse; margin-top: 12px; }
-th, td { border: 1px solid #aaa; padding: 6px 10px; text-align: center; }
+:root{
+  --bg:#fafafa;
+  --card:#ffffff;
+  --ink:#2b2b2b;
+  --muted:#7a7a7a;
+  --accent:#5fb3a2;   /* calm teal */
+  --accent-2:#f2a65a; /* soft warm pop */
+  --border:#e6e6e6;
+}
+
+body{
+  font-family:'Montserrat',sans-serif;
+  padding:24px;
+  max-width:1100px;
+  margin:auto;
+  background:var(--bg);
+  color:var(--ink);
+}
+
+h1{ font-weight:600; letter-spacing:.2px; }
+
+section{
+  border:1px solid var(--border);
+  padding:14px 16px;
+  margin-bottom:14px;
+  border-radius:10px;
+  background:var(--card);
+}
+
+h2{
+  margin:0 0 8px 0;
+  font-weight:600;
+  font-size:1.05rem;
+}
+
+label{ color:var(--muted); }
+
+input, select{
+  margin:6px 8px 6px 0;
+}
+
+button{
+  margin:6px 6px 6px 0;
+  padding:8px 14px;
+  background:var(--accent);
+  color:#fff;
+  border-radius:999px;
+  border:none;
+  cursor:pointer;
+  transition:transform .08s ease, box-shadow .08s ease, opacity .08s ease;
+}
+
+button:hover{
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(0,0,0,.08);
+}
+
+#generateBtn{
+  padding:14px 28px;
+  font-size:1.15em;
+  display:block;
+  margin:18px auto 10px auto;
+  background:var(--accent-2);
+}
+
+canvas{
+  border:1px solid var(--border);
+  margin-top:10px;
+  width:100%;
+  max-width:900px;
+  background:#fff;
+  border-radius:12px;
+}
+
+.preview{
+  width:36px;
+  height:36px;
+  position:relative;
+  border:1px solid var(--border);
+  margin:auto;
+  border-radius:6px;
+}
+
+table{
+  border-collapse:collapse;
+  margin-top:14px;
+  width:100%;
+}
+
+th,td{
+  border-bottom:1px solid var(--border);
+  padding:8px 10px;
+  text-align:left;
+}
+
+th{ color:var(--muted); font-weight:600; }
 </style>
 </head>
 
@@ -49,12 +135,14 @@ Pattern variety
 </select>
 </section>
 
-<button id="generateBtn" onclick="generate()">Generate Blanket</button>
+
 
 <section>
 <h2>Border & Color Blocking</h2>
 <label><input type="checkbox" id="borderOn" checked> Enable border</label><br>
 <label><input type="checkbox" id="colorBlockOn"> Color block outer ring</label><br>
+<label><input type="checkbox" id="separateBlockColor"> Use separate blocking color</label><br>
+Blocking color <input type="color" id="blockColor" value="#555555"><br>
 Border rows <input type="range" id="borderRows" min="1" max="8" value="2" oninput="borderVal.textContent=this.value">
 <span id="borderVal">2</span><br>
 Border color <input type="color" id="borderColor" value="#000000">
@@ -66,6 +154,7 @@ Border color <input type="color" id="borderColor" value="#000000">
 <button onclick="exportPDF()">Download PDF</button>
 </section>
 
+<button id="generateBtn" onclick="generate()">Generate Blanket</button>
 <canvas id="blanketCanvas"></canvas>
 
 <h2>Square Summary</h2>
@@ -138,7 +227,7 @@ function drawCanvas(){
   const borderOn=document.getElementById("borderOn").checked;
   const colorBlock=document.getElementById("colorBlockOn").checked;
   const borderRows=+document.getElementById("borderRows").value;
-  const borderSize=borderOn?borderRows*(size/rows):0;
+  const borderSize = borderOn ? borderRows * (size / rows) * 0.5 : 0;
 
   canvas.width=w*size+borderSize*2;
   canvas.height=h*size+borderSize*2;
@@ -152,10 +241,22 @@ function drawCanvas(){
   for(let y=0;y<h;y++){
     for(let x=0;x<w;x++){
       const t=[...lastTypes[lastGrid[y][x]]];
-      if(colorBlock){ t[t.length-1]=0; }
+      if(colorBlock){
+        if(document.getElementById("separateBlockColor").checked){
+          t[t.length-1] = "BLOCK";
+        } else {
+          t[t.length-1] = null;
+        }
+      }
       for(let r=0;r<rows;r++){
         const inset=(r/rows)*size/2;
-        ctx.fillStyle=palette[t[r]];
+        if(t[r] === "BLOCK"){
+        ctx.fillStyle = document.getElementById("blockColor").value;
+      } else if(t[r] === null){
+        ctx.fillStyle = document.getElementById("borderColor").value;
+      } else {
+        ctx.fillStyle = palette[t[r]];
+      }
         ctx.fillRect(borderSize+x*size+inset,borderSize+y*size+inset,size-inset*2,size-inset*2);
       }
     }
