@@ -1,368 +1,41 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Granny Square Blanket Planner</title>
-
-<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
-<style>
-:root{
-  --bg:#fafafa;
-  --card:#ffffff;
-  --ink:#2b2b2b;
-  --muted:#7a7a7a;
-  --accent:#5fb3a2;   /* calm teal */
-  --accent-2:#f2a65a; /* soft warm pop */
-  --border:#e6e6e6;
-}
-
-body{
-  font-family:'Montserrat',sans-serif;
-  padding:24px;
-  max-width:1100px;
-  margin:auto;
-  background:var(--bg);
-  color:var(--ink);
-}
-
-h1{ font-weight:600; letter-spacing:.2px; }
-
-section{
-  border:1px solid var(--border);
-  padding:14px 16px;
-  margin-bottom:14px;
-  border-radius:10px;
-  background:var(--card);
-}
-
-h2{
-  margin:0 0 8px 0;
-  font-weight:600;
-  font-size:1.05rem;
-}
-
-label{ color:var(--muted); }
-
-input, select{
-  margin:6px 8px 6px 0;
-}
-
-button{
-  margin:6px 6px 6px 0;
-  padding:8px 14px;
-  background:var(--accent);
-  color:#fff;
-  border-radius:999px;
-  border:none;
-  cursor:pointer;
-  transition:transform .08s ease, box-shadow .08s ease, opacity .08s ease;
-}
-
-button:hover{
-  transform:translateY(-1px);
-  box-shadow:0 4px 10px rgba(0,0,0,.08);
-}
-
-#generateBtn{
-  padding:14px 28px;
-  font-size:1.15em;
-  display:block;
-  margin:18px auto 10px auto;
-  background:var(--accent-2);
-}
-
-canvas{
-  border:1px solid var(--border);
-  margin-top:10px;
-  width:100%;
-  max-width:900px;
-  background:#fff;
-  border-radius:12px;
-}
-
-.preview{
-  width:36px;
-  height:36px;
-  position:relative;
-  border:1px solid var(--border);
-  margin:auto;
-  border-radius:6px;
-}
-
-table{
-  border-collapse:collapse;
-  margin-top:14px;
-  width:100%;
-}
-
-th,td{
-  border-bottom:1px solid var(--border);
-  padding:8px 10px;
-  text-align:left;
-}
-
-th{ color:var(--muted); font-weight:600; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Granny Square Pro Designer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root{ --bg:#fafafa; --card:#ffffff; --ink:#2b2b2b; --muted:#777; --accent:#5fb3a2; --accent-2:#f2a65a; --border:#e6e6e6; }
+        body{ font-family:'Montserrat',sans-serif; background:var(--bg); color:var(--ink); max-width:1200px; margin:auto; padding:24px; line-height:1.5; }
+        section{ background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:16px; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
+        .grid-layout { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+        .tab-container { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 2px solid var(--border); }
+        .tab { cursor: pointer; padding: 10px; font-weight: 600; color: var(--muted); border-bottom: 3px solid transparent; }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        button{ background: var(--accent); color:#fff; border:none; padding:10px 18px; border-radius:99px; cursor:pointer; font-weight:600; transition: 0.2s; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        .secondary { background: #eee; color: var(--ink); }
+        input, select { padding: 8px; border: 1px solid var(--border); border-radius: 6px; margin: 5px 0; width: 100%; box-sizing: border-box; }
+        canvas { width: 100%; border-radius: 12px; background: #fff; border: 1px solid var(--border); cursor: crosshair; }
+        .square-card { border: 2px solid var(--border); border-radius: 8px; padding: 10px; margin-bottom: 8px; cursor: pointer; }
+        .square-card.active { border-color: var(--accent-2); background: #fffdfa; }
+        .template-btn { padding: 8px; font-size: 0.75rem; background: #f9f9f9; color: #444; border: 1px solid #ddd; margin: 2px; border-radius: 4px; cursor: pointer; }
+        .template-btn:hover { background: #eee; }
+        .affiliate-box { background: #f0f7f6; border: 1px dashed var(--accent); padding: 15px; border-radius: 8px; margin-top: 15px; font-size: 0.85rem; }
+        .yarn-item { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; font-weight: 600; }
+        .swatch { width: 18px; height: 18px; border-radius: 3px; border: 1px solid #ccc; }
+        @media (max-width: 900px) { .grid-layout { grid-template-columns: 1fr; } }
+    </style>
 </head>
-
 <body>
-<h1>🧶 Granny Square Blanket Planner</h1>
 
-<section>
-<h2>Blanket Size</h2>
-Width <input type="number" id="w" value="8" min="1" max="50">
-Height <input type="number" id="h" value="10" min="1" max="50"><br>
-Rows per square <input type="range" id="rows" min="1" max="10" value="4" oninput="rowsVal.textContent=this.value">
-<span id="rowsVal">4</span>
-</section>
+<h1>🧶 Granny Square Pro Designer</h1>
 
-<section>
-<h2>Colors</h2>
-Number of colors <input type="number" id="totalColors" value="5" min="2" max="20">
-<button onclick="setPalette()">Set Palette</button>
-<div id="palette"></div>
-</section>
-
-<section>
-<h2>Pattern</h2>
-Pattern variety
-<select id="variety">
-<option value="low">Low</option>
-<option value="medium" selected>Medium</option>
-<option value="high">High</option>
-</select>
-</section>
-
-
-
-<section>
-<h2>Border & Color Blocking</h2>
-<label><input type="checkbox" id="borderOn" checked> Enable border</label><br>
-<label><input type="checkbox" id="colorBlockOn"> Color block outer ring</label><br>
-<label><input type="checkbox" id="separateBlockColor"> Use separate blocking color</label><br>
-Blocking color <input type="color" id="blockColor" value="#555555"><br>
-Border rows <input type="range" id="borderRows" min="1" max="8" value="2" oninput="borderVal.textContent=this.value">
-<span id="borderVal">2</span><br>
-Border color <input type="color" id="borderColor" value="#000000">
-</section>
-
-<section>
-<h2>Output</h2>
-<button onclick="estimateYarn()">Estimate Yarn</button>
-<button onclick="exportPDF()">Download PDF</button>
-</section>
-
-<button id="generateBtn" onclick="generate()">Generate Blanket</button>
-<canvas id="blanketCanvas"></canvas>
-
-<h2>Square Summary</h2>
-<table>
-<thead><tr><th>Preview</th><th>Pattern</th><th>Count</th></tr></thead>
-<tbody id="summary"></tbody>
-</table>
-
-<div id="yarnEstimate"></div>
-
-<script>
-let palette=[], colorNames=[], lastTypes=[], lastCounts=[], lastGrid=[];
-
-function setPalette(){
-  const n=+document.getElementById("totalColors").value;
-  palette=[]; colorNames=[];
-  const div=document.getElementById("palette");
-  div.innerHTML="";
-  for(let i=0;i<n;i++){
-    const c=document.createElement("input");
-    c.type="color";
-    c.value="#"+Math.floor(Math.random()*16777215).toString(16).padStart(6,"0");
-    palette.push(c.value);
-    colorNames.push("Color "+(i+1));
-    c.oninput=()=>palette[i]=c.value;
-    div.appendChild(c);
-  }
-}
-
-function generate(){
-  const w=+document.getElementById("w").value;
-  const h=+document.getElementById("h").value;
-  const rows=+document.getElementById("rows").value;
-  const divisor={low:10,medium:8,high:6}[document.getElementById("variety").value];
-  const maxTypes=Math.max(5,Math.floor(w*h/divisor));
-
-  const types=[];
-  for(let i=0;i<maxTypes;i++){
-    const p=[];
-    while(p.length<rows){
-      const r=Math.floor(Math.random()*palette.length);
-      if(!p.includes(r)) p.push(r);
-    }
-    types.push(p);
-  }
-
-  const grid=[];
-  const counts=Array(types.length).fill(0);
-  for(let y=0;y<h;y++){
-    grid[y]=[];
-    for(let x=0;x<w;x++){
-      let opts=[...types.keys()];
-      if(x>0) opts=opts.filter(i=>i!==grid[y][x-1]);
-      if(y>0) opts=opts.filter(i=>i!==grid[y-1][x]);
-      grid[y][x]=opts.length?opts[Math.floor(Math.random()*opts.length)]:0;
-      counts[grid[y][x]]++;
-    }
-  }
-
-  lastTypes=types; lastCounts=counts; lastGrid=grid;
-  drawCanvas(); renderSummary();
-}
-
-function drawCanvas(){
-  const canvas=document.getElementById("blanketCanvas");
-  const ctx=canvas.getContext("2d");
-  const rows=+document.getElementById("rows").value;
-  const w=lastGrid[0].length, h=lastGrid.length;
-  const size=Math.min(50,800/w);
-  const borderOn=document.getElementById("borderOn").checked;
-  const colorBlock=document.getElementById("colorBlockOn").checked;
-  const borderRows=+document.getElementById("borderRows").value;
-  const borderSize = borderOn ? borderRows * (size / rows) * 0.5 : 0;
-
-  canvas.width=w*size+borderSize*2;
-  canvas.height=h*size+borderSize*2;
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  if(borderOn){
-    ctx.fillStyle=document.getElementById("borderColor").value;
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-  }
-
-  for(let y=0;y<h;y++){
-    for(let x=0;x<w;x++){
-      const t=[...lastTypes[lastGrid[y][x]]];
-      if(colorBlock){
-        if(document.getElementById("separateBlockColor").checked){
-          t[t.length-1] = "BLOCK";
-        } else {
-          t[t.length-1] = null;
-        }
-      }
-      for(let r=0;r<rows;r++){
-        const inset=(r/rows)*size/2;
-        if(t[r] === "BLOCK"){
-        ctx.fillStyle = document.getElementById("blockColor").value;
-      } else if(t[r] === null){
-        ctx.fillStyle = document.getElementById("borderColor").value;
-      } else {
-        ctx.fillStyle = palette[t[r]];
-      }
-        ctx.fillRect(borderSize+x*size+inset,borderSize+y*size+inset,size-inset*2,size-inset*2);
-      }
-    }
-  }
-}
-
-function renderSummary(){
-  const body=document.getElementById("summary");
-  body.innerHTML="";
-  lastTypes.forEach((t,i)=>{
-    if(!lastCounts[i]) return;
-    const tr=document.createElement("tr");
-    const p=document.createElement("div");
-    p.className="preview";
-    t.forEach((c,j)=>{
-      const d=document.createElement("div");
-      const inset=(j/t.length)*36/2;
-      d.style.position="absolute";
-      d.style.left=d.style.top=inset+"px";
-      d.style.width=d.style.height=36-inset*2+"px";
-      d.style.background=palette[c];
-      p.appendChild(d);
-    });
-    tr.innerHTML=`<td></td><td>${t.map(c=>colorNames[c]).join(" → ")}</td><td>${lastCounts[i]}</td>`;
-    tr.children[0].appendChild(p);
-    body.appendChild(tr);
-  });
-}
-
-function estimateYarn(){
-  let totalSquares=0;
-  lastCounts.forEach(c=>totalSquares+=c);
-  const rows=+document.getElementById("rows").value;
-  const squareSizeCm = rows * 2 * 1.5;
-  const width=+document.getElementById("w").value*squareSizeCm;
-  const height=+document.getElementById("h").value*squareSizeCm;
-  const yarnEstimate=totalSquares*rows*2;
-
-  document.getElementById("yarnEstimate").innerHTML=
-    `<h3>Estimates</h3>
-     Blanket size: ~${width.toFixed(1)} cm × ${height.toFixed(1)} cm<br>
-     Estimated yarn: ~${yarnEstimate} g (rough)`;
-}
-
-function exportPDF(){
-  const { jsPDF } = window.jspdf;
-  const pdf = new jsPDF("p","mm","a4");
-
-  const pageWidth = 210;
-  const margin = 10;
-  let y = 10;
-
-  pdf.setFontSize(14);
-  pdf.text("Granny Square Blanket Plan", margin, y);
-  y += 6;
-
-  const canvas = document.getElementById("blanketCanvas");
-  const imgData = canvas.toDataURL("image/png");
-  const imgRatio = canvas.width / canvas.height;
-  const maxWidth = pageWidth - margin * 2;
-  const imgWidth = maxWidth;
-  const imgHeight = imgWidth / imgRatio;
-
-  pdf.addImage(imgData, "PNG", margin, y, imgWidth, imgHeight);
-  y += imgHeight + 8;
-
-  pdf.setFontSize(12);
-  pdf.text("Color Key", margin, y);
-  y += 6;
-
-  colorNames.forEach((name, i) => {
-    pdf.setFillColor(palette[i]);
-    pdf.rect(margin, y - 4, 4, 4, "F");
-    pdf.text(name, margin + 8, y);
-    y += 6;
-  });
-
-  pdf.addPage();
-  y = 10;
-  pdf.setFontSize(12);
-  pdf.text("Square Types Summary", margin, y);
-  y += 8;
-
-  lastTypes.forEach((t, i) => {
-    if (!lastCounts[i]) return;
-    const size = 12;
-    t.forEach((c, r) => {
-      const inset = (r / t.length) * size / 2;
-      pdf.setFillColor(palette[c]);
-      pdf.rect(margin + inset, y + inset, size - inset * 2, size - inset * 2, "F");
-    });
-
-    const patternText = t.map(c => colorNames[c]).join(" → ");
-    pdf.text(patternText, margin + 18, y + 8);
-    pdf.text("x " + lastCounts[i], pageWidth - margin - 20, y + 8);
-    y += 18;
-
-    if (y > 270) {
-      pdf.addPage();
-      y = 10;
-    }
-  });
-
-  pdf.save("granny-square-plan.pdf");
-}
-</script>
-
-</body>
-</html>
+<div class="grid-layout">
+    <div class="toolbox">
+        <section>
+            <h2>1. Style Templates</h2>
+            <div style="margin-bottom:10px;">
+                <button class="template-btn" onclick="applyTemplate('scandi')">
